@@ -13,6 +13,7 @@ from sklearn.preprocessing import StandardScaler
 import spacetimeformer as stf
 
 import matplotlib.pyplot as plt
+import sys;sys.path.append("/Workspace/Repos/lpenuelacantor@thewaterinstitute.org/spacetimeformer")
 
 
 class CSVTimeSeries:

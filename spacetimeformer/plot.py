@@ -75,7 +75,8 @@ class PredictionPlotterCallback(pl.Callback):
         var_names=None,
         pad_val=None,
         total_samples=4,
-        log_to_wandb=True,
+        log_to_wandb=False,
+        log_to_mlflow=False,
     ):
         self.test_data = test_batch
         self.total_samples = total_samples
@@ -120,6 +121,14 @@ class PredictionPlotterCallback(pl.Callback):
 
         if self.log_to_wandb:
             trainer.logger.experiment.log(
+                {
+                    "test/prediction_plots": imgs,
+                    "global_step": trainer.global_step,
+                }
+            )
+        
+        if self.log_to_mlflow:
+            trainer.logger.experiment.log_metrics(
                 {
                     "test/prediction_plots": imgs,
                     "global_step": trainer.global_step,

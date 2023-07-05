@@ -1,3 +1,4 @@
+import sys;sys.path.append("/Workspace/Repos/lpenuelacantor@thewaterinstitute.org/spacetimeformer")
 from argparse import ArgumentParser
 import random
 import sys
@@ -7,6 +8,7 @@ import uuid
 
 import pytorch_lightning as pl
 import torch
+
 
 import spacetimeformer as stf
 
@@ -34,6 +36,84 @@ _DSETS = [
     "traffic",
 ]
 
+def create_parser_cl(model, dset):
+
+
+    # Throw error now before we get confusing parser issues
+    assert (
+        model in _MODELS
+    ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
+    assert dset in _DSETS, f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
+
+    parser = ArgumentParser()
+    parser.add_argument("model")
+    parser.add_argument("dset")
+
+    if dset == "precip":
+        stf.data.precip.GeoDset.add_cli(parser)
+        stf.data.precip.CONUS_Precip.add_cli(parser)
+    elif dset == "metr-la" or dset == "pems-bay":
+        stf.data.metr_la.METR_LA_Data.add_cli(parser)
+    elif dset == "syn":
+        stf.data.synthetic.SyntheticData.add_cli(parser)
+        stf.data.CSVTorchDset.add_cli(parser)
+    elif dset == "mnist":
+        stf.data.image_completion.MNISTDset.add_cli(parser)
+    elif dset == "cifar":
+        stf.data.image_completion.CIFARDset.add_cli(parser)
+    elif dset == "copy":
+        stf.data.copy_task.CopyTaskDset.add_cli(parser)
+    elif dset == "cont_copy":
+        stf.data.cont_copy_task.ContCopyTaskDset.add_cli(parser)
+    elif dset == "m4":
+        stf.data.m4.M4TorchDset.add_cli(parser)
+    elif dset == "wiki":
+        stf.data.wiki.WikipediaTorchDset.add_cli(parser)
+    elif dset == "monash":
+        stf.data.monash.MonashDset.add_cli(parser)
+    elif dset == "hangzhou":
+        stf.data.metro.MetroData.add_cli(parser)
+    else:
+        stf.data.CSVTimeSeries.add_cli(parser)
+        stf.data.CSVTorchDset.add_cli(parser)
+    stf.data.DataModule.add_cli(parser)
+
+    if model == "lstm":
+        stf.lstm_model.LSTM_Forecaster.add_cli(parser)
+        stf.callbacks.TeacherForcingAnnealCallback.add_cli(parser)
+    elif model == "lstnet":
+        stf.lstnet_model.LSTNet_Forecaster.add_cli(parser)
+    elif model == "mtgnn":
+        stf.mtgnn_model.MTGNN_Forecaster.add_cli(parser)
+    elif model == "heuristic":
+        stf.heuristic_model.Heuristic_Forecaster.add_cli(parser)
+    elif model == "spacetimeformer":
+        stf.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
+    elif model == "linear":
+        stf.linear_model.Linear_Forecaster.add_cli(parser)
+    elif model == "s4":
+        stf.s4_model.S4_Forecaster.add_cli(parser)
+
+    stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
+
+    parser.add_argument("--wandb", action="store_true")
+    parser.add_argument("--mlflow", action="store_true")
+    parser.add_argument("--plot", action="store_true")
+    parser.add_argument("--plot_samples", type=int, default=8)
+    parser.add_argument("--attn_plot", action="store_true")
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--run_name", type=str, required=True)
+    parser.add_argument("--accumulate", type=int, default=1)
+    parser.add_argument("--val_check_interval", type=float, default=1.0)
+    parser.add_argument("--limit_val_batches", type=float, default=1.0)
+    parser.add_argument("--no_earlystopping", action="store_true")
+    parser.add_argument("--patience", type=int, default=5)
+    parser.add_argument(
+        "--trials", type=int, default=1, help="How many consecutive trials to run"
+    )
+
+
+    return parser
 
 def create_parser():
     model = sys.argv[1]
@@ -97,6 +177,7 @@ def create_parser():
     stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
     parser.add_argument("--wandb", action="store_true")
+    parser.add_argument("--mlflow", action="store_true")
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--plot_samples", type=int, default=8)
     parser.add_argument("--attn_plot", action="store_true")
@@ -277,7 +358,9 @@ def create_model(config):
         )
     elif config.model == "spacetimeformer":
         if hasattr(config, "context_points") and hasattr(config, "target_points"):
+            print("Entro seq_len")
             max_seq_len = config.context_points + config.target_points
+            print(max_seq_len)
         elif hasattr(config, "max_len"):
             max_seq_len = config.max_len
         else:
@@ -387,7 +470,9 @@ def create_dset(config):
     PLOT_VAR_IDXS = None
     PLOT_VAR_NAMES = None
     PAD_VAL = None
-
+    print("test")
+    print(config.dset)
+    print(config)
     if config.dset == "metr-la" or config.dset == "pems-bay":
         if config.dset == "pems-bay":
             assert (
@@ -614,7 +699,11 @@ def create_dset(config):
         time_features = ["year", "month", "day", "weekday", "hour", "minute"]
         if config.dset == "asos":
             if data_path == "auto":
-                data_path = "./data/temperature-v1.csv"
+                print("Entro2")
+                #data_path = "./data/bedelevation.csv"
+                data_path= "./data/temperature-v1_theirs.csv"
+                print(data_path)
+            #target_cols = ['Avg_ALH', 'Avg_BEL', 'Avg_BRF', 'Avg_FRV', 'Avg_GOU', 'Avg_GRA']
             target_cols = ["ABI", "AMA", "ACT", "ALB", "JFK", "LGA"]
         elif config.dset == "solar_energy":
             if data_path == "auto":
@@ -666,7 +755,7 @@ def create_dset(config):
             },
             batch_size=config.batch_size,
             workers=config.workers,
-            overfit=args.overfit,
+            overfit=config.overfit,
         )
         INV_SCALER = dset.reverse_scaling
         SCALER = dset.apply_scaling
@@ -705,7 +794,7 @@ def create_callbacks(config, save_dir):
             )
         )
 
-    if config.wandb:
+    if config.wandb or config.mlflow:
         callbacks.append(pl.callbacks.LearningRateMonitor())
 
     if config.model == "lstm":
@@ -729,6 +818,7 @@ def create_callbacks(config, save_dir):
 
 def main(args):
     log_dir = os.getenv("STF_LOG_DIR")
+    print(args)
     if log_dir is None:
         log_dir = "./data/STF_LOG_DIR"
         print(
@@ -761,6 +851,22 @@ def main(args):
             save_dir=log_dir,
         )
 
+    if args.mlflow:
+        import mlflow
+        tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+        assert (
+            tracking_uri is not None 
+        ), "Please provide the MLFlow URI using the os environment MLFLOW_TRACKING_URI"
+        #mlflow.set_tracking_uri(tracking_uri)
+        experiment_name = "/Repos/lpenuelacantor@thewaterinstitute.org/spacetimeformer/Space-Time-Former Demo"
+        #mlflow.set_experiment(experiment_name)
+        
+        mlflow.start_run(run_name=args.run_name)
+        logger = pl.loggers.MLFlowLogger(
+            experiment_name=experiment_name,
+            #tracking_uri=tracking_uri,
+        )
+
     # Dset
     (
         data_module,
@@ -782,8 +888,10 @@ def main(args):
 
     # Callbacks
     callbacks = create_callbacks(args, save_dir=log_dir)
+    print("data_module")
+    print(data_module.test_dataloader().__len__() )
     test_samples = next(iter(data_module.test_dataloader()))
-
+    
     if args.wandb and args.plot:
         callbacks.append(
             stf.plot.PredictionPlotterCallback(
@@ -792,6 +900,20 @@ def main(args):
                 var_names=plot_var_names,
                 pad_val=pad_val,
                 total_samples=min(args.plot_samples, args.batch_size),
+                log_to_wandb=True
+            )
+        )
+    
+    
+    if args.mlflow and args.plot:
+        callbacks.append(
+            stf.plot.PredictionPlotterCallback(
+                test_samples,
+                var_idxs=plot_var_idxs,
+                var_names=plot_var_names,
+                pad_val=pad_val,
+                total_samples=min(args.plot_samples, args.batch_size),
+                log_to_mlflow=True
             )
         )
 
@@ -824,7 +946,7 @@ def main(args):
 
     if args.wandb:
         config.update(args)
-        logger.log_hyperparams(config)
+        logger.log_hyperparams(args)
 
     if args.val_check_interval <= 1.0:
         val_control = {"val_check_interval": args.val_check_interval}
@@ -834,7 +956,7 @@ def main(args):
     trainer = pl.Trainer(
         gpus=args.gpus,
         callbacks=callbacks,
-        logger=logger if args.wandb else None,
+        logger=logger if (args.wandb or args.mlflow) else None,
         accelerator="dp",
         gradient_clip_val=args.grad_clip_norm,
         gradient_clip_algorithm="norm",
@@ -842,6 +964,7 @@ def main(args):
         accumulate_grad_batches=args.accumulate,
         sync_batchnorm=True,
         limit_val_batches=args.limit_val_batches,
+        log_every_n_steps = 35,
         **val_control,
     )
 
@@ -852,12 +975,16 @@ def main(args):
     trainer.test(datamodule=data_module, ckpt_path="best")
 
     # Predict (only here as a demo and test)
-    # forecaster.to("cuda")
-    # xc, yc, xt, _ = test_samples
-    # yt_pred = forecaster.predict(xc, yc, xt)
+    forecaster.to("cuda")
+    xc, yc, xt, _ = test_samples
+    yt_pred = forecaster.predict(xc, yc, xt)
 
     if args.wandb:
         experiment.finish()
+    if args.mlflow:
+        mlflow.end_run()
+    
+    return yt_pred,test_samples
 
 
 if __name__ == "__main__":

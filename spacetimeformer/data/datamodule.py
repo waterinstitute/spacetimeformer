@@ -34,7 +34,10 @@ class DataModule(pl.LightningDataModule):
         return self._make_dloader("val", shuffle=shuffle)
 
     def test_dataloader(self, shuffle=False):
-        return self._make_dloader("test", shuffle=shuffle)
+        print("test_dataloader")
+        test_data = self._make_dloader("test", shuffle=shuffle)
+        print(len(test_data))
+        return test_data
 
     def _make_dloader(self, split, shuffle=False):
         if self.overfit:
